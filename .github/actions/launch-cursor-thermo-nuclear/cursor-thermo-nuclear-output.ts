@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const THERMO_REVIEW_MARKER = "<!-- cursor-thermo-review -->";
+export const THERMO_REVIEW_MARKER = "<!-- cursor-thermo-nuclear-review -->";
 
 const SKILL_MARKDOWN = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "SKILL.md"),

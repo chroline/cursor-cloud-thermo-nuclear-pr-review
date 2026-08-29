@@ -1,7 +1,7 @@
 # Cursor Cloud Thermo-Nuclear PR Review
 
 Spawns Cursor Cloud Agents to run thermo-nuclear review on pull requests.
-Callers pin `.github/workflows/cursor-cloud-thermo-pr-review.yml` at a full
+Callers pin `.github/workflows/cursor-cloud-thermo-nuclear-pr-review.yml` at a full
 40-character commit SHA. Do not use a branch or tag pin.
 
 This repository is public so any GitHub repo can call the reusable workflow.
@@ -19,7 +19,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: cursor-cloud-thermo-pr-review-${{ github.event.pull_request.number }}
+  group: cursor-cloud-thermo-nuclear-pr-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
     name: Spawn Cloud Agent
     permissions:
       contents: read
-    uses: chroline/cursor-cloud-thermo-pr-review/.github/workflows/cursor-cloud-thermo-pr-review.yml@<FULL_40_CHARACTER_REVIEWED_COMMIT_SHA>
+    uses: chroline/cursor-cloud-thermo-nuclear-pr-review/.github/workflows/cursor-cloud-thermo-nuclear-pr-review.yml@<FULL_40_CHARACTER_REVIEWED_COMMIT_SHA>
     secrets:
       cursor_api_key: ${{ secrets.CURSOR_API_KEY }}
       publisher_client_id: ${{ secrets.PUBLISHER_CLIENT_ID }}

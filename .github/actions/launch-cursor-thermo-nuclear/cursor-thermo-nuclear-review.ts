@@ -9,7 +9,7 @@ import {
   buildInfrastructureFailureComment,
   buildReviewPrompt,
   buildRunningComment,
-} from "./cursor-thermo-output";
+} from "./cursor-thermo-nuclear-output";
 import {
   createGitHubReviewClient,
   type GitHubReviewClient,

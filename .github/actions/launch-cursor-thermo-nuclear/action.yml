@@ -18,4 +18,4 @@ runs:
     - name: Launch thermo-nuclear review
       shell: bash
       working-directory: ${{ github.action_path }}
-      run: npx tsx cursor-thermo-review.ts
+      run: npx tsx cursor-thermo-nuclear-review.ts

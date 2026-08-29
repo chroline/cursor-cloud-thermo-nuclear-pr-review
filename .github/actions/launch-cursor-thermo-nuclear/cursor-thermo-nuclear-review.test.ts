@@ -11,7 +11,7 @@ import {
   launchThermoReview,
   type GitHubReviewClient,
   type ThermoReviewConfig,
-} from "./cursor-thermo-review";
+} from "./cursor-thermo-nuclear-review";
 
 const config: ThermoReviewConfig = {
   repository: "example/app",
@@ -161,7 +161,7 @@ describe("launchThermoReview", () => {
 
   it("preserves an existing findings checklist while launching a rerun", async () => {
     const existingComment =
-      "<!-- cursor-thermo-review -->\n- [ ] **High** `src/a.ts:1` — fix me";
+      "<!-- cursor-thermo-nuclear-review -->\n- [ ] **High** `src/a.ts:1` — fix me";
     const cursor = createFakeCursor();
     const github = createFakeGitHub({ existingComment });
 

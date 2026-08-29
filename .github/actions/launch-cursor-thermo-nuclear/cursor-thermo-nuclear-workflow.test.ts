@@ -3,12 +3,12 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 const workflow = readFileSync(
-  new URL("../../workflows/cursor-cloud-thermo-pr-review.yml", import.meta.url),
+  new URL("../../workflows/cursor-cloud-thermo-nuclear-pr-review.yml", import.meta.url),
   "utf8",
 );
 
 const ACTION_PIN =
-  "chroline/cursor-cloud-thermo-pr-review/.github/actions/launch-cursor-thermo@5c86281aff800f7ba1fcb30b467d6a43ee23b77d";
+  "chroline/cursor-cloud-thermo-nuclear-pr-review/.github/actions/launch-cursor-thermo-nuclear@5c86281aff800f7ba1fcb30b467d6a43ee23b77d";
 
 describe("shared Cursor Cloud thermo-nuclear PR review workflow", () => {
   it("is a reusable workflow with publisher secrets and no secret inheritance", () => {
@@ -49,7 +49,7 @@ describe("shared Cursor Cloud thermo-nuclear PR review workflow", () => {
 
   it("loads the launcher action from this public repo, not the caller checkout", () => {
     assert.match(workflow, new RegExp(ACTION_PIN.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-    assert.doesNotMatch(workflow, /uses: \.\/\.github\/actions\/launch-cursor-thermo/);
+    assert.doesNotMatch(workflow, /uses: \.\/\.github\/actions\/launch-cursor-thermo-nuclear/);
   });
 
   it("keeps legacy environment inputs available to older launchers", () => {

@@ -23,5 +23,5 @@ jobs:
           package-manager-cache: false
 
       - name: Test Cursor thermo-nuclear launcher
-        working-directory: .github/actions/launch-cursor-thermo
+        working-directory: .github/actions/launch-cursor-thermo-nuclear
         run: npm ci && npm test
