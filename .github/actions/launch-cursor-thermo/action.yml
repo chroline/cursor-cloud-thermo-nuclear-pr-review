@@ -1,0 +1,21 @@
+name: Launch Cursor thermo-nuclear review
+description: Start one read-only Cursor Cloud Agent for the caller pull request
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node
+      uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+      with:
+        node-version: 24
+        package-manager-cache: false
+
+    - name: Install launcher
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npm ci
+
+    - name: Launch thermo-nuclear review
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: npx tsx cursor-thermo-review.ts
