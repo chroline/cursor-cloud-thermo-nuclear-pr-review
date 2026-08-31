@@ -42,7 +42,7 @@ jobs:
           permission-statuses: write
 
       - name: Send Autopilot follow-up
-        uses: chroline/cursor-cloud-thermo-nuclear-pr-review/.github/actions/launch-cursor-thermo-nuclear@0000000000000000000000000000000000000000
+        uses: chroline/cursor-cloud-thermo-nuclear-pr-review/.github/actions/launch-cursor-thermo-nuclear@5a3a6bc1e2a3700e948cf7636bc198b7fe0270c1
         with:
           command: autopilot
         env:

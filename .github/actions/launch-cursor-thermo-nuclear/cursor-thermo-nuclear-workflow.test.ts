@@ -8,7 +8,7 @@ const workflow = readFileSync(
 );
 
 const ACTION_PIN =
-  "chroline/cursor-cloud-thermo-nuclear-pr-review/.github/actions/launch-cursor-thermo-nuclear@e9380c0d67ee55dbf53b8d7e1b2f3fa7212bd8bf";
+  "chroline/cursor-cloud-thermo-nuclear-pr-review/.github/actions/launch-cursor-thermo-nuclear@5a3a6bc1e2a3700e948cf7636bc198b7fe0270c1";
 
 const autopilotWorkflow = readFileSync(
   new URL(
