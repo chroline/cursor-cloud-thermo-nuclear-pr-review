@@ -29,5 +29,15 @@ describe("createCursorAgentClient", () => {
       new Headers(requests[0]?.init?.headers).get("Authorization"),
       "Bearer cursor-secret",
     );
+
+    await client.createRun("bc-agent-1", {
+      prompt: { text: "Push the fixes" },
+      mode: "agent",
+    });
+    assert.equal(
+      requests[1]?.input,
+      "https://api.cursor.com/v1/agents/bc-agent-1/runs",
+    );
+    assert.equal(requests[1]?.init?.method, "POST");
   });
 });

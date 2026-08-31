@@ -10,6 +10,14 @@ const workflow = readFileSync(
 const ACTION_PIN =
   "chroline/cursor-cloud-thermo-nuclear-pr-review/.github/actions/launch-cursor-thermo-nuclear@e9380c0d67ee55dbf53b8d7e1b2f3fa7212bd8bf";
 
+const autopilotWorkflow = readFileSync(
+  new URL(
+    "../../workflows/cursor-cloud-thermo-nuclear-autopilot.yml",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
 describe("shared Cursor Cloud thermo-nuclear PR review workflow", () => {
   it("is a reusable workflow with publisher secrets and no secret inheritance", () => {
     assert.match(workflow, /^name: Cursor Cloud Thermo-Nuclear PR Review$/m);
@@ -61,6 +69,28 @@ describe("shared Cursor Cloud thermo-nuclear PR review workflow", () => {
     assert.match(
       workflow,
       /PR_TITLE: \$\{\{ github\.event\.pull_request\.title \}\}/,
+    );
+  });
+});
+
+describe("shared Cursor Cloud thermo-nuclear Autopilot workflow", () => {
+  it("is a reusable workflow that only handles review-comment edits", () => {
+    assert.match(autopilotWorkflow, /^name: Cursor Cloud Thermo-Nuclear Autopilot$/m);
+    assert.match(autopilotWorkflow, /^on:\n  workflow_call:/m);
+    assert.match(autopilotWorkflow, /github\.event_name == 'issue_comment'/);
+    assert.match(autopilotWorkflow, /github\.event\.action == 'edited'/);
+    assert.match(
+      autopilotWorkflow,
+      /contains\(github\.event\.comment\.body, 'cursor-thermo-nuclear-review'\)/,
+    );
+    assert.doesNotMatch(autopilotWorkflow, /secrets:\s*inherit/);
+  });
+
+  it("sends Autopilot through the launcher action", () => {
+    assert.match(autopilotWorkflow, /command: autopilot/);
+    assert.match(
+      autopilotWorkflow,
+      /chroline\/cursor-cloud-thermo-nuclear-pr-review\/\.github\/actions\/launch-cursor-thermo-nuclear@[0-9a-f]{40}/,
     );
   });
 });

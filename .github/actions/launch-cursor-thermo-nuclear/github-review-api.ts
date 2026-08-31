@@ -95,6 +95,13 @@ async function upsertWithRetry(
 export type GitHubReviewClient = {
   ensureComment(body: string): Promise<void>;
   upsertComment(body: string): Promise<void>;
+  updateMarkedComment(
+    transform: (body: string) => string,
+  ): Promise<boolean>;
+  patchComment(commentId: number, body: string): Promise<void>;
+  getCollaboratorPermission(
+    login: string,
+  ): Promise<"admin" | "maintain" | "write" | "triage" | "read" | "none">;
   createCommitStatus(input: {
     sha: string;
     state: "pending" | "success" | "failure" | "error";
@@ -182,6 +189,57 @@ export function createGitHubReviewClient({
           }).then(() => undefined),
         { retries: 1, delayMs: 1_000 },
       );
+    },
+    async updateMarkedComment(transform) {
+      const existing = await findMarkedCommentAcrossPages(
+        listCommentsPage,
+        marker,
+        commentAuthor,
+      );
+      if (!existing?.id || existing.body == null) {
+        return false;
+      }
+      const next = transform(existing.body);
+      if (next !== existing.body) {
+        await upsertWithRetry(
+          () =>
+            request(`/repos/${owner}/${repo}/issues/comments/${existing.id}`, {
+              method: "PATCH",
+              body: JSON.stringify({ body: next }),
+            }).then(() => undefined),
+          { retries: 1, delayMs: 1_000 },
+        );
+      }
+      return true;
+    },
+    async patchComment(commentId, body) {
+      await upsertWithRetry(
+        () =>
+          request(`/repos/${owner}/${repo}/issues/comments/${commentId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ body }),
+          }).then(() => undefined),
+        { retries: 1, delayMs: 1_000 },
+      );
+    },
+    async getCollaboratorPermission(login) {
+      try {
+        const payload = await request<{ permission?: string }>(
+          `/repos/${owner}/${repo}/collaborators/${encodeURIComponent(login)}/permission`,
+        );
+        switch (payload.permission) {
+          case "admin":
+          case "maintain":
+          case "write":
+          case "triage":
+          case "read":
+            return payload.permission;
+          default:
+            return "none";
+        }
+      } catch {
+        return "none";
+      }
     },
     async createCommitStatus(input) {
       await request(`/repos/${owner}/${repo}/statuses/${input.sha}`, {

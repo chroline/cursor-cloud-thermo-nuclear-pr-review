@@ -45,10 +45,30 @@ export type CreateCursorAgentResponse = {
   run: CursorRun;
 };
 
+export type CreateCursorRunRequest = {
+  prompt: { text: string };
+  mode?: "agent" | "plan";
+};
+
+export type CreateCursorRunResponse = {
+  run: CursorRun;
+};
+
+export type CursorAgentStatus = {
+  id: string;
+  status: "ACTIVE" | "IDLE" | "ARCHIVED";
+  url?: string;
+};
+
 export type CursorAgentClient = {
   createAgent(
     request: CreateCursorAgentRequest,
   ): Promise<CreateCursorAgentResponse>;
+  getAgent(id: string): Promise<CursorAgentStatus>;
+  createRun(
+    agentId: string,
+    request: CreateCursorRunRequest,
+  ): Promise<CreateCursorRunResponse>;
 };
 
 const CURSOR_API_BASE = "https://api.cursor.com/v1";
@@ -79,6 +99,12 @@ export function createCursorAgentClient({
   return {
     createAgent: (body) =>
       request<CreateCursorAgentResponse>("/agents", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    getAgent: (id) => request<CursorAgentStatus>(`/agents/${id}`),
+    createRun: (agentId, body) =>
+      request<CreateCursorRunResponse>(`/agents/${agentId}/runs`, {
         method: "POST",
         body: JSON.stringify(body),
       }),

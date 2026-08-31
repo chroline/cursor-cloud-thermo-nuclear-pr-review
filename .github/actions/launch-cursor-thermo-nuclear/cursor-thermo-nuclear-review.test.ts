@@ -86,8 +86,21 @@ describe("launchThermoReview", () => {
         { state: "pending", targetUrl: "https://cursor.test/agent-1" },
       ],
     );
+    assert.match(
+      cursor.createCalls[0]?.prompt.text ?? "",
+      /When the verdict is REQUEST_CHANGES, after the findings checklist include this Autopilot control/,
+    );
+    assert.match(
+      cursor.createCalls[0]?.prompt.text ?? "",
+      /Copy the existing HTML comment/,
+    );
     assert.match(github.comments.at(-1) ?? "", /Reviewing commit `abc1234`/);
     assert.match(github.comments.at(-1) ?? "", /## Thermo-Nuclear Review/);
+    assert.match(
+      github.comments.at(-1) ?? "",
+      /<!-- cursor-thermo-nuclear-agent:agent-1 -->/,
+    );
+    assert.doesNotMatch(github.comments.at(-1) ?? "", /!\[Autopilot\]/);
     assert.doesNotMatch(github.comments.at(-1) ?? "", /Open review agent/);
     assert.doesNotMatch(
       (github.comments.at(-1) ?? "").replace(/<!--[\s\S]*?-->/g, ""),
@@ -168,7 +181,9 @@ describe("launchThermoReview", () => {
     const outcome = await launchThermoReview({ config, cursor, github });
 
     assert.deepEqual(outcome, { launched: true });
-    assert.deepEqual(github.comments, [existingComment]);
+    assert.deepEqual(github.comments, [
+      "<!-- cursor-thermo-nuclear-review -->\n<!-- cursor-thermo-nuclear-agent:agent-1 -->\n- [ ] **High** `src/a.ts:1` — fix me",
+    ]);
   });
 
   it("stays launched when post-create status and comment updates fail", async () => {
@@ -207,6 +222,14 @@ function createFakeCursor(createError?: Error) {
         run: { id: "run-1", agentId: "agent-1", status: "RUNNING" },
       };
     },
+    async getAgent(id) {
+      return { id, status: "IDLE" };
+    },
+    async createRun() {
+      return {
+        run: { id: "run-2", agentId: "agent-1", status: "CREATING" },
+      };
+    },
   };
   return client;
 }
@@ -241,6 +264,20 @@ function createFakeGitHub({
     async upsertComment(body) {
       if (failComment) throw new Error("Comment API unavailable");
       comments.push(body);
+    },
+    async updateMarkedComment(transform) {
+      if (failComment) throw new Error("Comment API unavailable");
+      if (comments.length === 0) return false;
+      comments[0] = transform(comments[0] ?? "");
+      return true;
+    },
+    async patchComment(commentId, body) {
+      if (failComment) throw new Error("Comment API unavailable");
+      comments[0] = body;
+      void commentId;
+    },
+    async getCollaboratorPermission() {
+      return "write";
     },
     async createCommitStatus(input) {
       statuses.push(input);

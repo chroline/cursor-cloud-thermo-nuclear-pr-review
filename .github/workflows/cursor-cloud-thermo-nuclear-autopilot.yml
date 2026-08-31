@@ -1,0 +1,52 @@
+name: Cursor Cloud Thermo-Nuclear Autopilot
+
+on:
+  workflow_call:
+    secrets:
+      cursor_api_key:
+        description: Cursor API key with access to the caller repository
+        required: true
+      publisher_client_id:
+        description: Client ID for the repository-scoped publisher GitHub App
+        required: true
+      publisher_private_key:
+        description: Private key for the repository-scoped publisher GitHub App
+        required: true
+
+permissions: {}
+
+jobs:
+  autopilot:
+    name: Send Autopilot follow-up
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.action == 'edited' &&
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, 'cursor-thermo-nuclear-review')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Mint a repository-scoped publisher token
+        id: publisher
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          client-id: ${{ secrets.publisher_client_id }}
+          private-key: ${{ secrets.publisher_private_key }}
+          permission-contents: read
+          permission-issues: write
+          permission-pull-requests: write
+          permission-statuses: write
+
+      - name: Send Autopilot follow-up
+        uses: chroline/cursor-cloud-thermo-nuclear-pr-review/.github/actions/launch-cursor-thermo-nuclear@0000000000000000000000000000000000000000
+        with:
+          command: autopilot
+        env:
+          CURSOR_API_KEY: ${{ secrets.cursor_api_key }}
+          CURSOR_VALIDATION_STATUS_TOKEN: ${{ steps.publisher.outputs.token }}
+          PUBLISHER_BOT_LOGIN: ${{ format('{0}[bot]', steps.publisher.outputs.app-slug) }}
+          GITHUB_REPOSITORY: ${{ github.repository }}

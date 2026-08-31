@@ -6,6 +6,7 @@ import {
 } from "./cursor-agent-api";
 import {
   THERMO_REVIEW_MARKER,
+  applyAgentMarker,
   buildInfrastructureFailureComment,
   buildReviewPrompt,
   buildRunningComment,
@@ -126,7 +127,14 @@ export async function launchThermoReview({
       );
     });
   await github
-    .ensureComment(buildRunningComment(config.headSha))
+    .updateMarkedComment((body) => applyAgentMarker(body, review.agent.id))
+    .then(async (updated) => {
+      if (!updated) {
+        await github.ensureComment(
+          buildRunningComment(config.headSha, review.agent.id),
+        );
+      }
+    })
     .catch((commentError) => {
       console.error(
         "Failed to update thermo-nuclear review running comment:",

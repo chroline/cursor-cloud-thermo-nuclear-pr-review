@@ -52,6 +52,34 @@ After the workflow has run once, require the `Thermo-Nuclear Review` commit
 status in `main` branch protection. Do not require the short-lived
 `Spawn Cloud Agent` Actions job as the merge gate.
 
+## Autopilot
+
+REQUEST_CHANGES comments include a shields.io Autopilot badge as a task-list
+item. Checking it (write access required) sends a follow-up to the same Cloud
+Agent to implement the open findings and push them to the PR branch.
+
+```yaml
+name: Thermo-Nuclear Autopilot
+
+on:
+  issue_comment:
+    types: [edited]
+
+permissions: {}
+
+jobs:
+  autopilot:
+    name: Autopilot
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: chroline/cursor-cloud-thermo-nuclear-pr-review/.github/workflows/cursor-cloud-thermo-nuclear-autopilot.yml@<FULL_40_CHARACTER_REVIEWED_COMMIT_SHA>
+    secrets:
+      cursor_api_key: ${{ secrets.CURSOR_API_KEY }}
+      publisher_client_id: ${{ secrets.PUBLISHER_CLIENT_ID }}
+      publisher_private_key: ${{ secrets.PUBLISHER_PRIVATE_KEY }}
+```
+
 ## Changing the review
 
 Edit the launcher, skill, or reusable workflow in this repository, merge, then

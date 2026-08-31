@@ -1,5 +1,11 @@
 name: Launch Cursor thermo-nuclear review
-description: Start one read-only Cursor Cloud Agent for the caller pull request
+description: Start a read-only Cursor Cloud Agent review, or send an Autopilot follow-up
+
+inputs:
+  command:
+    description: launch (default) or autopilot
+    required: false
+    default: launch
 
 runs:
   using: composite
@@ -15,7 +21,19 @@ runs:
       working-directory: ${{ github.action_path }}
       run: npm ci
 
-    - name: Launch thermo-nuclear review
+    - name: Run thermo-nuclear command
       shell: bash
       working-directory: ${{ github.action_path }}
-      run: npx tsx cursor-thermo-nuclear-review.ts
+      run: |
+        case "${{ inputs.command }}" in
+          autopilot)
+            npx tsx cursor-thermo-nuclear-autopilot.ts
+            ;;
+          launch|"")
+            npx tsx cursor-thermo-nuclear-review.ts
+            ;;
+          *)
+            echo "Unknown command: ${{ inputs.command }}" >&2
+            exit 1
+            ;;
+        esac
