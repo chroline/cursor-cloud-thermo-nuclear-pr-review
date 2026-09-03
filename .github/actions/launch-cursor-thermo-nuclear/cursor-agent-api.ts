@@ -51,6 +51,16 @@ export type CursorAgentClient = {
   ): Promise<CreateCursorAgentResponse>;
 };
 
+export class HttpApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "HttpApiError";
+    this.status = status;
+  }
+}
+
 const CURSOR_API_BASE = "https://api.cursor.com/v1";
 
 export function createCursorAgentClient({
@@ -101,8 +111,9 @@ export async function parseJsonResponse<T>(
   }
 
   if (!response.ok) {
-    throw new Error(
+    throw new HttpApiError(
       `${label} failed with ${response.status}: ${JSON.stringify(payload)}`,
+      response.status,
     );
   }
 

@@ -1,4 +1,4 @@
-import { parseJsonResponse } from "./cursor-agent-api";
+import { HttpApiError, parseJsonResponse } from "./cursor-agent-api";
 
 type GitHubIssueComment = {
   id: number;
@@ -182,7 +182,7 @@ export function createGitHubReviewClient({
         method: "DELETE",
       });
     } catch (error) {
-      if (String(error).includes("404")) return;
+      if (error instanceof HttpApiError && error.status === 404) return;
       throw error;
     }
   };
@@ -197,16 +197,14 @@ export function createGitHubReviewClient({
             commentAuthor,
           );
           if (existing.length === 0) {
-            await postComment(body);
+            const created = await postComment(body);
+            if (!created.id) {
+              throw new Error("Failed to pin thermo-nuclear review comment");
+            }
+            return { id: created.id };
           }
 
-          const pinned = [
-            ...(await findMarkedCommentsAcrossPages(
-              listCommentsPage,
-              marker,
-              commentAuthor,
-            )),
-          ].sort((left, right) => left.id - right.id);
+          const pinned = [...existing].sort((left, right) => left.id - right.id);
           const keep = pinned[0];
           if (!keep) {
             throw new Error("Failed to pin thermo-nuclear review comment");
