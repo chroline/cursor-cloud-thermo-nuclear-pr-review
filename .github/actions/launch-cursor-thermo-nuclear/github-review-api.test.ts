@@ -161,6 +161,10 @@ describe("createGitHubReviewClient", () => {
       requests.find((request) => request.init?.method === "POST")?.init?.method,
       "POST",
     );
+    assert.equal(
+      requests.filter((request) => request.init?.method === undefined).length,
+      1,
+    );
   });
 
   it("does not replace an existing marked comment when ensuring one exists", async () => {
@@ -187,6 +191,84 @@ describe("createGitHubReviewClient", () => {
     assert.equal(
       requests.filter((request) => request.init?.method === "PATCH").length,
       0,
+    );
+    assert.equal(
+      requests.filter((request) => request.init?.method === undefined).length,
+      1,
+    );
+  });
+
+  it("ignores missing extra comments by HTTP status, not error text", async () => {
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    const marker = "<!-- custom-review -->";
+    const client = createGitHubReviewClient({
+      token: "github-token",
+      repository: "example/app",
+      prNumber: 42,
+      marker,
+      commentAuthor: "review-publisher[bot]",
+      fetchImpl: async (input, init) => {
+        requests.push({ url: String(input), init });
+        if (init?.method === "DELETE") {
+          return Response.json({ message: "Not Found" }, { status: 404 });
+        }
+        return Response.json([
+          {
+            id: 7,
+            body: `${marker}\nOriginal checklist`,
+            user: { login: "review-publisher[bot]" },
+          },
+          {
+            id: 9,
+            body: `${marker}\nLater duplicate`,
+            user: { login: "review-publisher[bot]" },
+          },
+        ]);
+      },
+    });
+
+    const ensured = await client.ensureComment(`${marker}\nReview running`);
+
+    assert.equal(ensured.id, 7);
+    assert.equal(
+      requests.filter((request) => request.init?.method === "DELETE").length,
+      1,
+    );
+  });
+
+  it("does not treat a 500 whose body mentions 404 as a missing comment", async () => {
+    const marker = "<!-- custom-review -->";
+    const client = createGitHubReviewClient({
+      token: "github-token",
+      repository: "example/app",
+      prNumber: 42,
+      marker,
+      commentAuthor: "review-publisher[bot]",
+      fetchImpl: async (_input, init) => {
+        if (init?.method === "DELETE") {
+          return Response.json(
+            { message: "upstream 404 while deleting" },
+            { status: 500 },
+          );
+        }
+        return Response.json([
+          {
+            id: 7,
+            body: `${marker}\nOriginal checklist`,
+            user: { login: "review-publisher[bot]" },
+          },
+          {
+            id: 9,
+            body: `${marker}\nLater duplicate`,
+            user: { login: "review-publisher[bot]" },
+          },
+        ]);
+      },
+    });
+
+    await assert.rejects(
+      () => client.ensureComment(`${marker}\nReview running`),
+      /failed with 500/,
     );
   });
 
