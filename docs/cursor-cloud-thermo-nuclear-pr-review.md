@@ -52,6 +52,11 @@ After the workflow has run once, require the `Thermo-Nuclear Review` commit
 status in `main` branch protection. Do not require the short-lived
 `Spawn Cloud Agent` Actions job as the merge gate.
 
+The launcher pins one `<!-- cursor-thermo-nuclear-review -->` issue comment
+per PR, passes that comment ID to the Cloud Agent, and deletes extra marked
+publisher comments from earlier runs. The agent PATCHes that ID. It must not
+POST another marked comment.
+
 ## Changing the review
 
 Edit the launcher, skill, or reusable workflow in this repository, merge, then

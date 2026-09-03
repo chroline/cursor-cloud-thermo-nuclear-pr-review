@@ -47,6 +47,7 @@ export async function launchThermoReview({
   github: GitHubReviewClient;
 }): Promise<ThermoLaunchOutcome> {
   let review: Awaited<ReturnType<CursorAgentClient["createAgent"]>>;
+  let commentId: number | undefined;
 
   try {
     await github.createCommitStatus({
@@ -57,9 +58,21 @@ export async function launchThermoReview({
       context: THERMO_STATUS_CONTEXT,
     });
 
+    commentId = (await github.ensureComment(buildRunningComment(config.headSha)))
+      .id;
+
     review = await cursor.createAgent({
       name: agentName(config.prTitle),
-      prompt: { text: buildReviewPrompt(config) },
+      prompt: {
+        text: buildReviewPrompt({
+          repository: config.repository,
+          prNumber: config.prNumber,
+          prUrl: config.prUrl,
+          headSha: config.headSha,
+          commentId,
+          commentAuthor: config.commentAuthor,
+        }),
+      },
       model: { id: THERMO_MODEL_ID },
       repos: [{ url: config.repoUrl, prUrl: config.prUrl }],
       autoCreatePR: false,
@@ -74,6 +87,7 @@ export async function launchThermoReview({
         GITHUB_HEAD_SHA: config.headSha,
         GITHUB_STATUS_CONTEXT: THERMO_STATUS_CONTEXT,
         GITHUB_PR_COMMENT_MARKER: THERMO_REVIEW_MARKER,
+        GITHUB_PR_COMMENT_ID: String(commentId),
         ...(config.commentAuthor
           ? { GITHUB_COMMENT_AUTHOR: config.commentAuthor }
           : {}),
@@ -123,14 +137,6 @@ export async function launchThermoReview({
       console.error(
         "Failed to update thermo-nuclear review running status:",
         statusError,
-      );
-    });
-  await github
-    .ensureComment(buildRunningComment(config.headSha))
-    .catch((commentError) => {
-      console.error(
-        "Failed to update thermo-nuclear review running comment:",
-        commentError,
       );
     });
 

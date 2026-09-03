@@ -44,7 +44,7 @@ jobs:
       - name: Spawn thermo-nuclear Cloud Agent
         # Relative ./ paths resolve against the *caller* checkout. Pin the
         # composite action so public and private callers load it from this repo.
-        uses: chroline/cursor-cloud-thermo-nuclear-pr-review/.github/actions/launch-cursor-thermo-nuclear@e9380c0d67ee55dbf53b8d7e1b2f3fa7212bd8bf
+        uses: chroline/cursor-cloud-thermo-nuclear-pr-review/.github/actions/launch-cursor-thermo-nuclear@0007fcfdda1d336189b815807de91f301de01dd0
         env:
           CURSOR_API_KEY: ${{ secrets.cursor_api_key }}
           CURSOR_VALIDATION_STATUS_TOKEN: ${{ steps.publisher.outputs.token }}
