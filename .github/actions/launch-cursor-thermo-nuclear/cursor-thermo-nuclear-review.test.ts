@@ -55,6 +55,10 @@ describe("launchThermoReview", () => {
       cursor.createCalls[0]?.envVars?.GITHUB_COMMENT_AUTHOR,
       undefined,
     );
+    assert.equal(
+      cursor.createCalls[0]?.envVars?.GITHUB_PR_COMMENT_ID,
+      "1",
+    );
     assert.match(
       cursor.createCalls[0]?.prompt.text ?? "",
       /Do not edit files, commit, push, create branches, create pull requests/,
@@ -138,7 +142,15 @@ describe("launchThermoReview", () => {
     );
     assert.match(
       cursor.createCalls[0]?.prompt.text ?? "",
-      /PATCH only a marked comment whose `user\.login` is `review-publisher\[bot\]`/,
+      /The pinned comment's `user\.login` must remain `review-publisher\[bot\]`/,
+    );
+    assert.match(
+      cursor.createCalls[0]?.prompt.text ?? "",
+      /Never POST a new issue comment/,
+    );
+    assert.match(
+      cursor.createCalls[0]?.prompt.text ?? "",
+      /issues\/comments\/1/,
     );
   });
 
@@ -169,13 +181,29 @@ describe("launchThermoReview", () => {
 
     assert.deepEqual(outcome, { launched: true });
     assert.deepEqual(github.comments, [existingComment]);
+    assert.equal(cursor.createCalls[0]?.envVars?.GITHUB_PR_COMMENT_ID, "1");
   });
 
-  it("stays launched when post-create status and comment updates fail", async () => {
+  it("does not launch when the pinned comment cannot be ensured", async () => {
+    const cursor = createFakeCursor();
+    const github = createFakeGitHub({
+      failComment: true,
+    });
+
+    const outcome = await launchThermoReview({ config, cursor, github });
+
+    assert.equal(outcome.launched, false);
+    assert.equal(cursor.createCalls.length, 0);
+    assert.deepEqual(
+      github.statuses.map(({ state }) => state),
+      ["pending", "failure"],
+    );
+  });
+
+  it("stays launched when post-create status updates fail", async () => {
     const cursor = createFakeCursor();
     const github = createFakeGitHub({
       failStatusAt: 2,
-      failComment: true,
     });
 
     const outcome = await launchThermoReview({ config, cursor, github });
@@ -237,6 +265,7 @@ function createFakeGitHub({
     async ensureComment(body) {
       if (failComment) throw new Error("Comment API unavailable");
       if (comments.length === 0) comments.push(body);
+      return { id: 1 };
     },
     async upsertComment(body) {
       if (failComment) throw new Error("Comment API unavailable");

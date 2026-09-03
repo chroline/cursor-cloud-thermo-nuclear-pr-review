@@ -127,6 +127,17 @@ describe("createGitHubReviewClient", () => {
   it("posts a running comment when only another author owns the marker", async () => {
     const requests: Array<{ url: string; init?: RequestInit }> = [];
     const marker = "<!-- custom-review -->";
+    const humanComment = {
+      id: 7,
+      body: `${marker}\nCole's old checklist`,
+      user: { login: "chroline" },
+    };
+    const botComment = {
+      id: 9,
+      body: `${marker}\nReview running`,
+      user: { login: "review-publisher[bot]" },
+    };
+    let posted = false;
     const client = createGitHubReviewClient({
       token: "github-token",
       repository: "example/app",
@@ -135,20 +146,21 @@ describe("createGitHubReviewClient", () => {
       commentAuthor: "review-publisher[bot]",
       fetchImpl: async (input, init) => {
         requests.push({ url: String(input), init });
-        if (init?.method === "POST") return Response.json({ id: 9 });
-        return Response.json([
-          {
-            id: 7,
-            body: `${marker}\nCole's old checklist`,
-            user: { login: "chroline" },
-          },
-        ]);
+        if (init?.method === "POST") {
+          posted = true;
+          return Response.json(botComment);
+        }
+        return Response.json(posted ? [humanComment, botComment] : [humanComment]);
       },
     });
 
-    await client.ensureComment(`${marker}\nReview running`);
+    const ensured = await client.ensureComment(`${marker}\nReview running`);
 
-    assert.equal(requests[1]?.init?.method, "POST");
+    assert.equal(ensured.id, 9);
+    assert.equal(
+      requests.find((request) => request.init?.method === "POST")?.init?.method,
+      "POST",
+    );
   });
 
   it("does not replace an existing marked comment when ensuring one exists", async () => {
@@ -165,9 +177,53 @@ describe("createGitHubReviewClient", () => {
       },
     });
 
-    await client.ensureComment(`${marker}\nReview running`);
+    const ensured = await client.ensureComment(`${marker}\nReview running`);
 
-    assert.equal(requests.length, 1);
-    assert.equal(requests[0]?.init?.method, undefined);
+    assert.equal(ensured.id, 7);
+    assert.equal(
+      requests.filter((request) => request.init?.method === "POST").length,
+      0,
+    );
+    assert.equal(
+      requests.filter((request) => request.init?.method === "PATCH").length,
+      0,
+    );
+  });
+
+  it("deletes extra marked comments and pins the oldest", async () => {
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    const marker = "<!-- custom-review -->";
+    const client = createGitHubReviewClient({
+      token: "github-token",
+      repository: "example/app",
+      prNumber: 42,
+      marker,
+      commentAuthor: "review-publisher[bot]",
+      fetchImpl: async (input, init) => {
+        requests.push({ url: String(input), init });
+        if (init?.method === "DELETE") {
+          return new Response(null, { status: 204 });
+        }
+        return Response.json([
+          {
+            id: 9,
+            body: `${marker}\nLater duplicate`,
+            user: { login: "review-publisher[bot]" },
+          },
+          {
+            id: 7,
+            body: `${marker}\nOriginal checklist`,
+            user: { login: "review-publisher[bot]" },
+          },
+        ]);
+      },
+    });
+
+    const ensured = await client.ensureComment(`${marker}\nReview running`);
+
+    assert.equal(ensured.id, 7);
+    const deletes = requests.filter((request) => request.init?.method === "DELETE");
+    assert.equal(deletes.length, 1);
+    assert.match(deletes[0]?.url ?? "", /issues\/comments\/9/);
   });
 });

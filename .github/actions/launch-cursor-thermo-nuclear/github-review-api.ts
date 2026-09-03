@@ -6,31 +6,55 @@ type GitHubIssueComment = {
   user?: { login?: string };
 };
 
+export type EnsuredComment = {
+  id: number;
+};
+
+function isMarkedComment(
+  comment: GitHubIssueComment,
+  marker: string,
+  authorLogin?: string,
+) {
+  if (!comment.body?.includes(marker)) return false;
+  if (!authorLogin) return true;
+  return comment.user?.login === authorLogin;
+}
+
+async function findMarkedCommentsAcrossPages(
+  listCommentsPage: (page: number) => Promise<GitHubIssueComment[]>,
+  marker: string,
+  authorLogin?: string,
+): Promise<GitHubIssueComment[]> {
+  const found: GitHubIssueComment[] = [];
+  let page = 1;
+
+  while (true) {
+    const comments = await listCommentsPage(page);
+    found.push(
+      ...comments.filter((comment) =>
+        isMarkedComment(comment, marker, authorLogin),
+      ),
+    );
+
+    if (comments.length < 100) {
+      return found;
+    }
+
+    page += 1;
+  }
+}
+
 async function findMarkedCommentAcrossPages(
   listCommentsPage: (page: number) => Promise<GitHubIssueComment[]>,
   marker: string,
   authorLogin?: string,
 ): Promise<GitHubIssueComment | undefined> {
-  let page = 1;
-
-  while (true) {
-    const comments = await listCommentsPage(page);
-    const existingComment = comments.find((comment) => {
-      if (!comment.body?.includes(marker)) return false;
-      if (!authorLogin) return true;
-      return comment.user?.login === authorLogin;
-    });
-
-    if (existingComment) {
-      return existingComment;
-    }
-
-    if (comments.length < 100) {
-      return undefined;
-    }
-
-    page += 1;
-  }
+  const comments = await findMarkedCommentsAcrossPages(
+    listCommentsPage,
+    marker,
+    authorLogin,
+  );
+  return [...comments].sort((left, right) => left.id - right.id)[0];
 }
 
 async function upsertMarkedPrComment({
@@ -46,7 +70,7 @@ async function upsertMarkedPrComment({
   authorLogin?: string;
   listCommentsPage: (page: number) => Promise<GitHubIssueComment[]>;
   patchComment: (commentId: number, body: string) => Promise<void>;
-  postComment: (body: string) => Promise<void>;
+  postComment: (body: string) => Promise<GitHubIssueComment>;
 }): Promise<"patched" | "posted"> {
   const existingComment = await findMarkedCommentAcrossPages(
     listCommentsPage,
@@ -63,8 +87,8 @@ async function upsertMarkedPrComment({
   return "posted";
 }
 
-async function upsertWithRetry(
-  operation: () => Promise<void>,
+async function upsertWithRetry<T>(
+  operation: () => Promise<T>,
   {
     retries = 1,
     delayMs = 1000,
@@ -74,13 +98,12 @@ async function upsertWithRetry(
     delayMs?: number;
     sleep?: (ms: number) => Promise<void>;
   } = {},
-) {
+): Promise<T> {
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
-      await operation();
-      return;
+      return await operation();
     } catch (error) {
       lastError = error;
       if (attempt < retries) {
@@ -93,7 +116,7 @@ async function upsertWithRetry(
 }
 
 export type GitHubReviewClient = {
-  ensureComment(body: string): Promise<void>;
+  ensureComment(body: string): Promise<EnsuredComment>;
   upsertComment(body: string): Promise<void>;
   createCommitStatus(input: {
     sha: string;
@@ -146,21 +169,53 @@ export function createGitHubReviewClient({
       `/repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100&page=${page}`,
     );
   const postComment = (body: string) =>
-    request(`/repos/${owner}/${repo}/issues/${prNumber}/comments`, {
-      method: "POST",
-      body: JSON.stringify({ body }),
-    }).then(() => undefined);
+    request<GitHubIssueComment>(
+      `/repos/${owner}/${repo}/issues/${prNumber}/comments`,
+      {
+        method: "POST",
+        body: JSON.stringify({ body }),
+      },
+    );
+  const deleteComment = async (commentId: number) => {
+    try {
+      await request(`/repos/${owner}/${repo}/issues/comments/${commentId}`, {
+        method: "DELETE",
+      });
+    } catch (error) {
+      if (String(error).includes("404")) return;
+      throw error;
+    }
+  };
 
   return {
     async ensureComment(body) {
-      await upsertWithRetry(
+      return upsertWithRetry(
         async () => {
-          const existing = await findMarkedCommentAcrossPages(
+          const existing = await findMarkedCommentsAcrossPages(
             listCommentsPage,
             marker,
             commentAuthor,
           );
-          if (!existing) await postComment(body);
+          if (existing.length === 0) {
+            await postComment(body);
+          }
+
+          const pinned = [
+            ...(await findMarkedCommentsAcrossPages(
+              listCommentsPage,
+              marker,
+              commentAuthor,
+            )),
+          ].sort((left, right) => left.id - right.id);
+          const keep = pinned[0];
+          if (!keep) {
+            throw new Error("Failed to pin thermo-nuclear review comment");
+          }
+
+          await Promise.all(
+            pinned.slice(1).map((comment) => deleteComment(comment.id)),
+          );
+          return { id: keep.id };
         },
         { retries: 1, delayMs: 1_000 },
       );
