@@ -8,7 +8,7 @@ const workflow = readFileSync(
 );
 
 const ACTION_PIN =
-  "chroline/cursor-cloud-thermo-nuclear-pr-review/.github/actions/launch-cursor-thermo-nuclear@0007fcfdda1d336189b815807de91f301de01dd0";
+  "chroline/cursor-cloud-thermo-nuclear-pr-review/.github/actions/launch-cursor-thermo-nuclear@27ea0fea160803aa136d8a3e57f9679f03e1f012";
 
 describe("shared Cursor Cloud thermo-nuclear PR review workflow", () => {
   it("is a reusable workflow with publisher secrets and no secret inheritance", () => {
