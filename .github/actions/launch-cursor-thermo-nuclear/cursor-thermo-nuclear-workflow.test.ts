@@ -29,7 +29,11 @@ describe("shared Cursor Cloud thermo-nuclear PR review workflow", () => {
   it("owns draft and fork eligibility instead of the consumer caller", () => {
     assert.match(
       workflow,
-      /github\.event\.pull_request\.draft == false &&\n      github\.event\.pull_request\.head\.repo\.full_name == github\.repository/,
+      /review_forks:\n        description: Review pull requests from forks\. Default is same-repository branches only\.\n        type: boolean\n        default: false/,
+    );
+    assert.match(
+      workflow,
+      /github\.event\.pull_request\.draft == false &&\n      \(inputs\.review_forks \|\|\n      github\.event\.pull_request\.head\.repo\.full_name == github\.repository\)/,
     );
   });
 
@@ -50,6 +54,14 @@ describe("shared Cursor Cloud thermo-nuclear PR review workflow", () => {
   it("loads the launcher action from this public repo, not the caller checkout", () => {
     assert.match(workflow, new RegExp(ACTION_PIN.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     assert.doesNotMatch(workflow, /uses: \.\/\.github\/actions\/launch-cursor-thermo-nuclear/);
+  });
+
+  it("does not check out pull_request.head in the spawn job", () => {
+    assert.doesNotMatch(workflow, /actions\/checkout/);
+    assert.match(
+      workflow,
+      /PR_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
+    );
   });
 
   it("keeps legacy environment inputs available to older launchers", () => {
